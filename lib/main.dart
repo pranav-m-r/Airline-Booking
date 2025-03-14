@@ -4,9 +4,6 @@ import 'package:provider/provider.dart';
 import 'auth_service.dart';
 import 'database_helper.dart';
 import 'login_screen.dart';
-import 'home_screen.dart';
-import 'admin_screen.dart';
-import 'models.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
