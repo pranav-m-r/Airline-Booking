@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'auth_service.dart';
 import 'home_screen.dart';
+import 'guest_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -18,10 +19,15 @@ class _LoginScreenState extends State<LoginScreen> {
     final authService = Provider.of<AuthService>(context, listen: false);
     var user = await authService.signInWithEmail(emailController.text, passwordController.text);
     if (user != null) {
-      Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => HomeScreen()));
+      Navigator.pushReplacement(
+          context, MaterialPageRoute(builder: (_) => HomeScreen(userId: user.uid)));
     } else {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Login failed")));
     }
+  }
+
+  void loginAsGuest() {
+    Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => GuestScreen()));
   }
 
   @override
@@ -35,10 +41,14 @@ class _LoginScreenState extends State<LoginScreen> {
             TextField(controller: emailController, decoration: InputDecoration(labelText: "Email")),
             TextField(controller: passwordController, decoration: InputDecoration(labelText: "Password"), obscureText: true),
             SizedBox(height: 20),
-            ElevatedButton(onPressed: login, child: Text("Login"))
+            ElevatedButton(onPressed: login, child: Text("Login")),
+            SizedBox(height: 10),
+            ElevatedButton(onPressed: loginAsGuest, child: Text("Continue as Guest")),
           ],
         ),
       ),
     );
   }
 }
+
+
