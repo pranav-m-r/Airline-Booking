@@ -20,12 +20,9 @@ class DatabaseHelper {
       path,
       version: 1,
       onCreate: (db, version) async {
-        await db.execute(
-            "CREATE TABLE flights(id INTEGER PRIMARY KEY, name TEXT, origin TEXT, destination TEXT, price REAL)"
-        );
-        await db.execute(
-            "CREATE TABLE bookings(id INTEGER PRIMARY KEY, userId TEXT, flightId INTEGER, status TEXT)"
-        );
+        await db.execute("CREATE TABLE flights(id INTEGER PRIMARY KEY, name TEXT, origin TEXT, destination TEXT, price REAL)");
+        await db.execute("CREATE TABLE bookings(id INTEGER PRIMARY KEY, userId TEXT, flightId INTEGER, status TEXT)");
+        await db.execute("CREATE TABLE transactions(id INTEGER PRIMARY KEY, userId TEXT, amount REAL, status TEXT)");
       },
     );
   }

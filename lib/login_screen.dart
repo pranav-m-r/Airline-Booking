@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'auth_service.dart';
 import 'home_screen.dart';
 import 'guest_screen.dart';
@@ -14,15 +13,14 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
+  final AuthService authService = AuthService();
 
   void login() async {
-    final authService = Provider.of<AuthService>(context, listen: false);
-    var user = await authService.signInWithEmail(emailController.text, passwordController.text);
+    String? user = await authService.signInWithEmail(emailController.text, passwordController.text);
     if (user != null) {
-      Navigator.pushReplacement(
-          context, MaterialPageRoute(builder: (_) => HomeScreen(userId: user.uid)));
+      if (mounted) Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => HomeScreen(userId: user)));
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Login failed")));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Login failed")));
     }
   }
 
@@ -50,5 +48,6 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 }
+
 
 
