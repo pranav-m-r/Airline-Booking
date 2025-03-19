@@ -3,9 +3,31 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter/services.dart';
+import 'package:sqflite/sqflite.dart';
+import 'dart:io' show File;
 
-void main() {
+late Database db;
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
+  await initDatabase();
   runApp(SkyLinerApp());
+}
+
+Future<void> initDatabase() async {
+  String databasesPath = await getDatabasesPath();
+  String path = "${databasesPath}database.db";
+  await deleteDatabase(path);
+  ByteData data = await rootBundle.load("assets/database.db");
+  List<int> bytes =
+      data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
+  await File(path).writeAsBytes(bytes, flush: true);
+  db = await openDatabase(path, readOnly: true);
 }
 
 class SkyLinerApp extends StatelessWidget {
@@ -28,22 +50,24 @@ class SkyLinerApp extends StatelessWidget {
   }
 }
 
-final dummyFlights = [
-  {'id': 'A1B2', 'origin': 'New York', 'destination': 'Los Angeles', 'price': 200.0, 'date': '2025-03-20', 'departure': '08:00', 'arrival': '11:30', 'airline': 'Delta Airlines'},
-  {'id': 'C3D4', 'origin': 'New York', 'destination': 'Los Angeles', 'price': 220.0, 'date': '2025-03-20', 'departure': '12:00', 'arrival': '15:30', 'airline': 'American Airlines'},
-  {'id': 'E5F6', 'origin': 'New York', 'destination': 'Los Angeles', 'price': 210.0, 'date': '2025-03-21', 'departure': '14:00', 'arrival': '17:30', 'airline': 'United Airlines'},
-  {'id': 'G7H8', 'origin': 'Chicago', 'destination': 'Houston', 'price': 150.0, 'date': '2025-03-20', 'departure': '09:00', 'arrival': '11:00', 'airline': 'Southwest Airlines'},
-  {'id': 'I9J0', 'origin': 'Chicago', 'destination': 'Houston', 'price': 180.0, 'date': '2025-03-21', 'departure': '13:00', 'arrival': '15:00', 'airline': 'Spirit Airlines'},
-  {'id': 'K1L2', 'origin': 'San Francisco', 'destination': 'Seattle', 'price': 100.0, 'date': '2025-03-20', 'departure': '10:00', 'arrival': '12:00', 'airline': 'Alaska Airlines'},
-  {'id': 'M3N4', 'origin': 'San Francisco', 'destination': 'Seattle', 'price': 120.0, 'date': '2025-03-21', 'departure': '16:00', 'arrival': '18:00', 'airline': 'JetBlue'},
-  {'id': 'O5P6', 'origin': 'New York', 'destination': 'Chicago', 'price': 170.0, 'date': '2025-03-20', 'departure': '07:00', 'arrival': '09:30', 'airline': 'Delta Airlines'},
-  {'id': 'Q7R8', 'origin': 'Houston', 'destination': 'San Francisco', 'price': 190.0, 'date': '2025-03-20', 'departure': '11:00', 'arrival': '14:30', 'airline': 'United Airlines'},
-  {'id': 'S9T0', 'origin': 'New York', 'destination': 'Los Angeles', 'price': 230.0, 'date': '2025-03-21', 'departure': '18:00', 'arrival': '21:30', 'airline': 'American Airlines'},
-  {'id': 'U1V2', 'origin': 'Chicago', 'destination': 'New York', 'price': 175.0, 'date': '2025-03-20', 'departure': '08:30', 'arrival': '11:00', 'airline': 'Spirit Airlines'},
-  {'id': 'W3X4', 'origin': 'Seattle', 'destination': 'San Francisco', 'price': 110.0, 'date': '2025-03-21', 'departure': '12:30', 'arrival': '14:30', 'airline': 'Alaska Airlines'},
-  {'id': 'Y5Z6', 'origin': 'Houston', 'destination': 'Chicago', 'price': 160.0, 'date': '2025-03-20', 'departure': '10:30', 'arrival': '13:00', 'airline': 'Southwest Airlines'},
-  {'id': 'A7B8', 'origin': 'Los Angeles', 'destination': 'New York', 'price': 240.0, 'date': '2025-03-21', 'departure': '20:00', 'arrival': '23:30', 'airline': 'JetBlue'},
-];
+// final dummyFlights = [
+//   {'id': 'A1B2', 'origin': 'New York', 'destination': 'Los Angeles', 'price': 200.0, 'date': '2025-03-20', 'departure': '08:00', 'arrival': '11:30', 'airline': 'Delta Airlines'},
+//   {'id': 'C3D4', 'origin': 'New York', 'destination': 'Los Angeles', 'price': 220.0, 'date': '2025-03-20', 'departure': '12:00', 'arrival': '15:30', 'airline': 'American Airlines'},
+//   {'id': 'E5F6', 'origin': 'New York', 'destination': 'Los Angeles', 'price': 210.0, 'date': '2025-03-21', 'departure': '14:00', 'arrival': '17:30', 'airline': 'United Airlines'},
+//   {'id': 'G7H8', 'origin': 'Chicago', 'destination': 'Houston', 'price': 150.0, 'date': '2025-03-20', 'departure': '09:00', 'arrival': '11:00', 'airline': 'Southwest Airlines'},
+//   {'id': 'I9J0', 'origin': 'Chicago', 'destination': 'Houston', 'price': 180.0, 'date': '2025-03-21', 'departure': '13:00', 'arrival': '15:00', 'airline': 'Spirit Airlines'},
+//   {'id': 'K1L2', 'origin': 'San Francisco', 'destination': 'Seattle', 'price': 100.0, 'date': '2025-03-20', 'departure': '10:00', 'arrival': '12:00', 'airline': 'Alaska Airlines'},
+//   {'id': 'M3N4', 'origin': 'San Francisco', 'destination': 'Seattle', 'price': 120.0, 'date': '2025-03-21', 'departure': '16:00', 'arrival': '18:00', 'airline': 'JetBlue'},
+//   {'id': 'O5P6', 'origin': 'New York', 'destination': 'Chicago', 'price': 170.0, 'date': '2025-03-20', 'departure': '07:00', 'arrival': '09:30', 'airline': 'Delta Airlines'},
+//   {'id': 'Q7R8', 'origin': 'Houston', 'destination': 'San Francisco', 'price': 190.0, 'date': '2025-03-20', 'departure': '11:00', 'arrival': '14:30', 'airline': 'United Airlines'},
+//   {'id': 'S9T0', 'origin': 'New York', 'destination': 'Los Angeles', 'price': 230.0, 'date': '2025-03-21', 'departure': '18:00', 'arrival': '21:30', 'airline': 'American Airlines'},
+//   {'id': 'U1V2', 'origin': 'Chicago', 'destination': 'New York', 'price': 175.0, 'date': '2025-03-20', 'departure': '08:30', 'arrival': '11:00', 'airline': 'Spirit Airlines'},
+//   {'id': 'W3X4', 'origin': 'Seattle', 'destination': 'San Francisco', 'price': 110.0, 'date': '2025-03-21', 'departure': '12:30', 'arrival': '14:30', 'airline': 'Alaska Airlines'},
+//   {'id': 'Y5Z6', 'origin': 'Houston', 'destination': 'Chicago', 'price': 160.0, 'date': '2025-03-20', 'departure': '10:30', 'arrival': '13:00', 'airline': 'Southwest Airlines'},
+//   {'id': 'A7B8', 'origin': 'Los Angeles', 'destination': 'New York', 'price': 240.0, 'date': '2025-03-21', 'departure': '20:00', 'arrival': '23:30', 'airline': 'JetBlue'},
+// ];
+
+List<Map> flights = [];
 
 void showPopup(BuildContext context, String title, String content) {
   showDialog(
@@ -394,7 +418,58 @@ class _FlightSearchPageState extends State<FlightSearchPage> {
 
 // Other pages and widgets remain the same but should use the SkyLinerTopNavBar for consistency
 
-class FlightResultsPage extends StatelessWidget {
+class FlightResultsPage extends StatefulWidget {
+
+  @override
+  State<FlightResultsPage> createState() => _FlightResultsPageState();
+}
+
+class _FlightResultsPageState extends State<FlightResultsPage> {
+  void initList() async {
+    // Query the database to fetch all flight details
+    List<Map<String, dynamic>> queryResult = await db.rawQuery('''
+      SELECT 
+        flights.flight_id AS id,
+        flights.flight_number AS flightNumber,
+        airlines.name AS airline,
+        departure_airport.city AS origin,
+        arrival_airport.city AS destination,
+        flights.departure_time AS departure,
+        flights.arrival_time AS arrival,
+        flights.status AS status,
+        DATE(flights.departure_time) AS date
+      FROM flights
+      INNER JOIN airlines ON flights.airline_id = airlines.airline_id
+      INNER JOIN airports AS departure_airport ON flights.departure_airport_id = departure_airport.airport_id
+      INNER JOIN airports AS arrival_airport ON flights.arrival_airport_id = arrival_airport.airport_id
+    ''');
+
+    // Populate the flights list with the query result
+    setState(() {
+      flights = queryResult.map((flight) {
+        return {
+          'id': flight['id'],
+          'flightNumber': flight['flightNumber'],
+          'airline': flight['airline'],
+          'origin': flight['origin'],
+          'destination': flight['destination'],
+          'departure': flight['departure'],
+          'arrival': flight['arrival'],
+          'status': flight['status'],
+          'date': flight['date'],
+        };
+      }).toList();
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    if (flights.isEmpty) {
+      initList();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final Map<String, dynamic>? args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>?;
@@ -402,7 +477,7 @@ class FlightResultsPage extends StatelessWidget {
     final String arrivalCity = (args?['arrivalCity'] ?? '').trim().toLowerCase();
     final String date = (args?['date'] ?? '').trim();
 
-    final filteredFlights = dummyFlights.where((flight) =>
+    final filteredFlights = flights.where((flight) =>
       flight['origin'].toString().trim().toLowerCase() == departureCity &&
       flight['destination'].toString().trim().toLowerCase() == arrivalCity &&
       flight['date'].toString().trim() == date
