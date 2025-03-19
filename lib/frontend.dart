@@ -40,11 +40,12 @@ class SkyLinerApp extends StatelessWidget {
         '/': (context) => LoginPage(),
         '/signup': (context) => SignUpPage(),
         '/flight_search': (context) => FlightSearchPage(),
+        '/admin_dashboard': (context) => AdminDashboardPage(),
         '/flight_results': (context) => FlightResultsPage(),
         '/flight_details': (context) => FlightDetailsPage(),
-        '/payment': (context) => PaymentPage(), // Add this route
-        '/booking_history': (context) => BookingHistoryPage(),
-        '/profile': (context) => ProfilePage(),
+        '/payment': (context) => PaymentPage(),
+        '/booking_history': (context) => BookingHistoryPage(userID: 'USER001'),
+        '/profile': (context) => ProfilePage(userID: 'USER001'),
       },
     );
   }
@@ -106,7 +107,84 @@ class SkyLinerTopNavBar extends StatelessWidget implements PreferredSizeWidget {
   Size get preferredSize => Size.fromHeight(kToolbarHeight);
 }
 
+final List<Map<String, dynamic>> dummyUsers = [
+  {
+    'userID': 'USER001',
+    'email': 'user1@example.com',
+    'password': 'password123',
+    'name': 'John Doe',
+    'phone': '123-456-7890',
+    'isAdmin': false,
+  },
+  {
+    'userID': 'USER002',
+    'email': 'user2@example.com',
+    'password': 'securepass',
+    'name': 'Jane Smith',
+    'phone': '987-654-3210',
+    'isAdmin': false,
+  },
+  {
+    'userID': 'ADMIN001',
+    'email': 'admin@example.com',
+    'password': 'admin123',
+    'name': 'Admin User',
+    'phone': '111-222-3333',
+    'isAdmin': true,
+  },
+];
+
+final List<Map<String, dynamic>> dummyBookings = [
+  {
+    'bookingID': 'B001',
+    'userID': 'USER001',
+    'flightID': 'FL001',
+    'airline': 'Airline A',
+    'price': 350.00,
+    'bookingDate': '2025-03-19',
+    'status': 'Confirmed',
+  },
+  {
+    'bookingID': 'B002',
+    'userID': 'USER002',
+    'flightID': 'FL002',
+    'airline': 'Airline B',
+    'price': 450.00,
+    'bookingDate': '2025-03-18',
+    'status': 'Confirmed',
+  },
+];
+
+
 class LoginPage extends StatelessWidget {
+  final TextEditingController emailController = TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
+
+  void authenticateUser(BuildContext context) {
+    final String email = emailController.text.trim();
+    final String password = passwordController.text;
+
+    // Check if user exists in the dummy user list
+    final user = dummyUsers.firstWhere(
+      (user) => user['email'] == email && user['password'] == password,
+      orElse: () => {},
+    );
+
+    if (user.isNotEmpty) {
+      // Check if the user is an admin
+      if (user['isAdmin'] == true) {
+        // Redirect to Admin Dashboard
+        Navigator.pushNamed(context, '/admin_dashboard');
+      } else {
+        // Redirect to Flight Search page
+        Navigator.pushNamed(context, '/flight_search', arguments: {'isGuest': false});
+      }
+    } else {
+      // Show error message for invalid credentials
+      showPopup(context, 'Login Failed', 'Invalid email or password. Please try again.');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -143,18 +221,18 @@ class LoginPage extends StatelessWidget {
               ),
               SizedBox(height: 20),
               TextField(
+                controller: emailController,
                 decoration: InputDecoration(labelText: 'Email'),
               ),
               SizedBox(height: 10),
               TextField(
+                controller: passwordController,
                 obscureText: true,
                 decoration: InputDecoration(labelText: 'Password'),
               ),
               SizedBox(height: 20),
               ElevatedButton(
-                onPressed: () {
-                  Navigator.pushNamed(context, '/flight_search', arguments: {'isGuest': false});
-                },
+                onPressed: () => authenticateUser(context),
                 child: Text('Login'),
               ),
               SizedBox(height: 10),
@@ -184,6 +262,51 @@ class LoginPage extends StatelessWidget {
 }
 
 class SignUpPage extends StatelessWidget {
+  final TextEditingController nameController = TextEditingController();
+  final TextEditingController emailController = TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
+  final TextEditingController phoneController = TextEditingController();
+
+  void addUser(BuildContext context) {
+    final String name = nameController.text.trim();
+    final String email = emailController.text.trim();
+    final String password = passwordController.text.trim();
+    final String phone = phoneController.text.trim();
+
+    // Validate input fields
+    if (name.isEmpty || email.isEmpty || password.isEmpty || phone.isEmpty) {
+      showPopup(context, 'Error', 'All fields are required.');
+      return;
+    }
+
+    // Check if the user already exists
+   final existingUser = dummyUsers.firstWhere(
+  (user) => user['email'] == email,
+  orElse: () => {}, // Return an empty map with matching type
+);
+
+// Ensure the map type matches
+if (existingUser.isNotEmpty) {
+  showPopup(context, 'Error', 'User with this email already exists.');
+  return;
+}
+
+    // Add the new user to dummyUsers
+    dummyUsers.add({
+      'name': name,
+      'email': email,
+      'password': password,
+      'phone': phone,
+      'isAdmin': false, // Default to false
+    });
+
+    // Show success message
+    showPopup(context, 'Success', 'Account created successfully!');
+    
+    // Redirect to login page
+    Navigator.pushReplacementNamed(context, '/');
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -220,26 +343,29 @@ class SignUpPage extends StatelessWidget {
               ),
               SizedBox(height: 20),
               TextField(
+                controller: nameController,
+                decoration: InputDecoration(labelText: 'Name'),
+              ),
+              SizedBox(height: 10),
+              TextField(
+                controller: emailController,
                 decoration: InputDecoration(labelText: 'Email'),
               ),
               SizedBox(height: 10),
               TextField(
                 obscureText: true,
+                controller: passwordController,
                 decoration: InputDecoration(labelText: 'Password'),
+              ),
+              SizedBox(height: 10),
+              TextField(
+                controller: phoneController,
+                decoration: InputDecoration(labelText: 'Phone Number'),
               ),
               SizedBox(height: 20),
               ElevatedButton(
-                onPressed: () {
-                  Navigator.pushNamed(context, '/flight_search', arguments: {'isGuest': false});
-                },
+                onPressed: () => addUser(context),
                 child: Text('Sign Up'),
-              ),
-              SizedBox(height: 10),
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.pushNamed(context, '/flight_search', arguments: {'isGuest': true});
-                },
-                child: Text('Continue as Guest'),
               ),
               Spacer(),
               Row(
@@ -261,6 +387,107 @@ class SignUpPage extends StatelessWidget {
     );
   }
 }
+
+class AdminDashboardPage extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Admin Dashboard'),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            ElevatedButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => FlightManagementPage()),
+                );
+              },
+              child: Text('Flight Management'),
+            ),
+            SizedBox(height: 16.0),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => UserManagementPage()),
+                );
+              },
+              child: Text('User Management'),
+            ),
+            SizedBox(height: 16.0),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => BookingInsightsPage()),
+                );
+              },
+              child: Text('Booking Insights'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class FlightManagementPage extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Flight Management'),
+      ),
+      body: Center(
+        child: Text(
+          'Flight Management Page',
+          style: TextStyle(fontSize: 24),
+        ),
+      ),
+    );
+  }
+}
+
+class UserManagementPage extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('User Management'),
+      ),
+      body: Center(
+        child: Text(
+          'User Management Page',
+          style: TextStyle(fontSize: 24),
+        ),
+      ),
+    );
+  }
+}
+
+class BookingInsightsPage extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Booking Insights'),
+      ),
+      body: Center(
+        child: Text(
+          'Booking Insights Page',
+          style: TextStyle(fontSize: 24),
+        ),
+      ),
+    );
+  }
+}
+
+
 
 Widget _buildTextField(String label, {bool obscureText = false}) {
   return Container(
@@ -602,36 +829,23 @@ class _PaymentPageState extends State<PaymentPage> {
   String? selectedPaymentMethod;
   String paymentStatus = "Pending";
 
-  void _showConfirmationDialog() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Confirm Payment'),
-          content: Text('Do you want to confirm the payment or pay later?'),
-          actions: [
-            TextButton(
-              onPressed: () {
-                setState(() {
-                  paymentStatus = "Confirmed";
-                });
-                Navigator.of(context).pop();
-              },
-              child: Text('Confirm'),
-            ),
-            TextButton(
-              onPressed: () {
-                setState(() {
-                  paymentStatus = "Pending";
-                });
-                Navigator.of(context).pop();
-              },
-              child: Text('Pay Later'),
-            ),
-          ],
-        );
-      },
-    );
+  void _confirmPayment(Map<String, dynamic> paymentDetails) {
+    setState(() {
+      paymentStatus = "Confirmed";
+    });
+
+    // Add booking to dummyBookings
+    dummyBookings.add({
+      'bookingID': DateTime.now().millisecondsSinceEpoch.toString(),
+      'userID': paymentDetails['userID'],
+      'flightID': paymentDetails['id'],
+      'airline': paymentDetails['airline'],
+      'price': paymentDetails['price'],
+      'bookingDate': paymentDetails['bookingDate'],
+      'status': 'Confirmed',
+    });
+
+    Navigator.pop(context);
   }
 
   @override
@@ -693,8 +907,8 @@ class _PaymentPageState extends State<PaymentPage> {
             ),
             SizedBox(height: 16),
             ElevatedButton(
-              onPressed: _showConfirmationDialog,
-              child: Text('Pay Now'),
+              onPressed: () => _confirmPayment(paymentDetails),
+              child: Text('Confirm Payment'),
             ),
           ],
         ),
@@ -704,77 +918,52 @@ class _PaymentPageState extends State<PaymentPage> {
 }
 
 class BookingHistoryPage extends StatefulWidget {
+  final String userID;
+
+  BookingHistoryPage({required this.userID});
+
   @override
   _BookingHistoryPageState createState() => _BookingHistoryPageState();
 }
 
 class _BookingHistoryPageState extends State<BookingHistoryPage> {
-  List<Map<String, dynamic>> dummyBookings = [
-    {'id': '1A2B', 'airline': 'Airline A', 'status': 'Confirmed', 'date': '2025-03-15'},
-    {'id': '3C4D', 'airline': 'Airline B', 'status': 'Cancelled', 'date': '2025-03-14'},
-  ];
-
-  void cancelBooking(int index) {
-    setState(() {
-      dummyBookings[index]['status'] = 'Cancelled';
-    });
-  }
-
-  void showPopup(BuildContext context, String title, String message, int index) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text(title),
-          content: Text(message),
-          actions: [
-            TextButton(
-              onPressed: () {
-                cancelBooking(index);
-                Navigator.of(context).pop();
-              },
-              child: Text('OK'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
+    // Filter bookings by userID
+    final userBookings = dummyBookings.where((booking) => booking['userID'] == widget.userID).toList();
+
+    void cancelBooking(String bookingID) {
+      setState(() {
+        dummyBookings.removeWhere((booking) => booking['bookingID'] == bookingID);
+      });
+    }
+
     return Scaffold(
-      appBar: AppBar(title: Text('SkyLiner - Booking History')),
-      body: dummyBookings.isEmpty
-          ? Center(child: Text('No bookings yet!'))
+      appBar: AppBar(title: Text('Booking History')),
+      body: userBookings.isEmpty
+          ? Center(child: Text('No bookings found.'))
           : ListView.builder(
-              itemCount: dummyBookings.length,
+              itemCount: userBookings.length,
               itemBuilder: (context, index) {
-                final booking = dummyBookings[index];
+                final booking = userBookings[index];
                 return Card(
                   child: ListTile(
                     title: Text('Airline: ${booking['airline']}'),
                     subtitle: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Booking ID: ${booking['id']}'),
+                        Text('Booking ID: ${booking['bookingID']}'),
                         Text('Status: ${booking['status']}'),
-                        Text('Booking Date: ${booking['date']}'),
+                        Text('Booking Date: ${booking['bookingDate']}'),
+                        Text('Flight ID: ${booking['flightID']}'),
                       ],
                     ),
-                    trailing: booking['status'] == 'Confirmed'
-                        ? IconButton(
-                            icon: Icon(Icons.delete),
-                            onPressed: () {
-                              showPopup(
-                                context,
-                                'Booking Cancelled',
-                                'You have cancelled booking for ${booking['airline']}',
-                                index,
-                              );
-                            },
-                          )
-                        : null, // No delete button if already cancelled
+                    trailing: IconButton(
+                      icon: Icon(Icons.cancel, color: Colors.red),
+                      onPressed: () {
+                        cancelBooking(booking['bookingID']);
+                      },
+                    ),
                   ),
                 );
               },
@@ -785,22 +974,27 @@ class _BookingHistoryPageState extends State<BookingHistoryPage> {
 
 
 class ProfilePage extends StatefulWidget {
+  final String userID;
+
+  ProfilePage({required this.userID});
+
   @override
   _ProfilePageState createState() => _ProfilePageState();
 }
 
 class _ProfilePageState extends State<ProfilePage> {
-  Map<String, String> userProfile = {
-    'userID': 'USER12345',
-    'name': 'John Doe',
-    'email': 'johndoe@example.com',
-    'phoneNo': '1234567890',
-    'passportNo': 'A1234567',
-  };
+  late Map<String, dynamic> currentUser;
 
-  void updateProfile(Map<String, String> updatedProfile) {
+  @override
+  void initState() {
+    super.initState();
+    // Load the user's data initially
+    currentUser = dummyUsers.firstWhere((user) => user['userID'] == widget.userID);
+  }
+
+  void refreshUserData() {
     setState(() {
-      userProfile = updatedProfile;
+      currentUser = dummyUsers.firstWhere((user) => user['userID'] == widget.userID);
     });
   }
 
@@ -809,37 +1003,37 @@ class _ProfilePageState extends State<ProfilePage> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Profile'),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.edit),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => ProfileEditPage(
-                    userProfile: userProfile,
-                    onSave: updateProfile,
-                  ),
-                ),
-              );
-            },
-          ),
-        ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('User ID: ${userProfile['userID']}', style: TextStyle(fontSize: 18)),
+            Text('User ID: ${currentUser['userID']}', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             SizedBox(height: 10),
-            Text('Name: ${userProfile['name']}', style: TextStyle(fontSize: 18)),
+            Text('Name: ${currentUser['name']}', style: TextStyle(fontSize: 18)),
             SizedBox(height: 10),
-            Text('Email: ${userProfile['email']}', style: TextStyle(fontSize: 18)),
+            Text('Email: ${currentUser['email']}', style: TextStyle(fontSize: 18)),
             SizedBox(height: 10),
-            Text('Phone Number: ${userProfile['phoneNo']}', style: TextStyle(fontSize: 18)),
-            SizedBox(height: 10),
-            Text('Passport Number: ${userProfile['passportNo']}', style: TextStyle(fontSize: 18)),
+            Text('Phone: ${currentUser['phone']}', style: TextStyle(fontSize: 18)),
+            SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () async {
+                // Navigate to ProfileEditPage and wait for the result
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ProfileEditPage(userID: widget.userID),
+                  ),
+                );
+
+                // If the result is not null, refresh the user data
+                if (result != null) {
+                  refreshUserData();
+                }
+              },
+              child: Text('Edit Profile'),
+            ),
           ],
         ),
       ),
@@ -847,39 +1041,53 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 }
 
-class ProfileEditPage extends StatefulWidget {
-  final Map<String, String> userProfile;
-  final Function(Map<String, String>) onSave;
 
-  ProfileEditPage({required this.userProfile, required this.onSave});
+
+class ProfileEditPage extends StatefulWidget {
+  final String userID;
+
+  ProfileEditPage({required this.userID});
 
   @override
   _ProfileEditPageState createState() => _ProfileEditPageState();
 }
 
 class _ProfileEditPageState extends State<ProfileEditPage> {
+  late Map<String, dynamic> currentUser;
   late TextEditingController nameController;
   late TextEditingController emailController;
-  late TextEditingController phoneNoController;
-  late TextEditingController passportNoController;
+  late TextEditingController phoneController;
 
   @override
   void initState() {
     super.initState();
-    nameController = TextEditingController(text: widget.userProfile['name']);
-    emailController = TextEditingController(text: widget.userProfile['email']);
-    phoneNoController = TextEditingController(text: widget.userProfile['phoneNo']);
-    passportNoController = TextEditingController(text: widget.userProfile['passportNo']);
+    // Initialize currentUser from dummyUsers
+    currentUser = dummyUsers.firstWhere((user) => user['userID'] == widget.userID);
+    nameController = TextEditingController(text: currentUser['name']);
+    emailController = TextEditingController(text: currentUser['email']);
+    phoneController = TextEditingController(text: currentUser['phone']);
   }
 
   @override
   void dispose() {
     nameController.dispose();
     emailController.dispose();
-    phoneNoController.dispose();
-    passportNoController.dispose();
+    phoneController.dispose();
     super.dispose();
   }
+
+  void saveChanges(BuildContext context, Map<String, dynamic> updatedData) {
+  // Find the user in the dummyUsers list based on userID
+  final index = dummyUsers.indexWhere((user) => user['userID'] == updatedData['userID']);
+
+  if (index != -1) {
+    // Update the user's data
+    dummyUsers[index] = updatedData;
+  }
+
+  // Navigate back to the ProfilePage with updated data
+  Navigator.pop(context, updatedData);
+}
 
   @override
   Widget build(BuildContext context) {
@@ -890,37 +1098,41 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Text('User ID: ${currentUser['userID']}', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            SizedBox(height: 10),
             TextField(
               controller: nameController,
               decoration: InputDecoration(labelText: 'Name'),
             ),
+            SizedBox(height: 10),
             TextField(
               controller: emailController,
               decoration: InputDecoration(labelText: 'Email'),
             ),
+            SizedBox(height: 10),
             TextField(
-              controller: phoneNoController,
-              decoration: InputDecoration(labelText: 'Phone Number'),
-            ),
-            TextField(
-              controller: passportNoController,
-              decoration: InputDecoration(labelText: 'Passport Number'),
+              controller: phoneController,
+              decoration: InputDecoration(labelText: 'Phone'),
             ),
             SizedBox(height: 20),
             ElevatedButton(
               onPressed: () {
-                Map<String, String> updatedProfile = {
-                  'userID': widget.userProfile['userID']!,
-                  'name': nameController.text,
+                // Create the updated data map
+                final updatedData = {
+                  'userID': currentUser['userID'],
                   'email': emailController.text,
-                  'phoneNo': phoneNoController.text,
-                  'passportNo': passportNoController.text,
+                  'password': currentUser['password'], // Keep the password unchanged
+                  'name': nameController.text,
+                  'phone': phoneController.text,
+                  'isAdmin': currentUser['isAdmin'], // Keep admin status unchanged
                 };
-                widget.onSave(updatedProfile);
-                Navigator.pop(context);
+
+                // Save changes to the dummy data
+                saveChanges(context, updatedData);
               },
-              child: Text('Save'),
+              child: Text('Save Changes'),
             ),
           ],
         ),
@@ -928,5 +1140,6 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
     );
   }
 }
+
 
 

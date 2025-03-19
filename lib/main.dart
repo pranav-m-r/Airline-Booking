@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'frontend.dart';
 import 'login_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(MyApp());
+  runApp(SkyLinerApp());
+
 }
 
 class MyApp extends StatelessWidget {
