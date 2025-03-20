@@ -4,10 +4,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/services.dart';
+import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 import 'dart:io' show File;
 
 late Database db;
+String? currentUserID;
+List<Map<String, dynamic>> users = [];
+List<Map<String, dynamic>> bookings = [];
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -16,19 +20,84 @@ Future<void> main() async {
     DeviceOrientation.portraitDown,
   ]);
   await initDatabase();
+  await fetchUsers();
+  await fetchBookings();
   runApp(SkyLinerApp());
 }
 
 Future<void> initDatabase() async {
-  String databasesPath = await getDatabasesPath();
-  String path = "${databasesPath}database.db";
-  await deleteDatabase(path);
-  ByteData data = await rootBundle.load("assets/database.db");
-  List<int> bytes =
-      data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
-  await File(path).writeAsBytes(bytes, flush: true);
-  db = await openDatabase(path, readOnly: true);
+  try {
+    String databasesPath = await getDatabasesPath();
+    String path = join(databasesPath, "database.db");
+
+    // Check if the database already exists
+    bool databaseExists = await File(path).exists();
+
+    if (!databaseExists) {
+      // Copy the database from assets if it doesn't exist
+      ByteData data = await rootBundle.load("assets/database.db");
+      List<int> bytes = data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
+      await File(path).writeAsBytes(bytes, flush: true);
+      print("✅ Database copied from assets.");
+    } else {
+      print("✅ Database already exists. Skipping copy.");
+    }
+
+    // Open the database in read-write mode
+    db = await openDatabase(path);
+    print("✅ Database initialized successfully.");
+
+    // Debugging: Check available tables
+    List<Map<String, dynamic>> tables = await db.rawQuery(
+        "SELECT name FROM sqlite_master WHERE type='table';");
+    print("📋 Tables in database: $tables");
+  } catch (e) {
+    print('❌ Error initializing database: $e');
+  }
 }
+
+Future<void> fetchUsers() async {
+    try {
+      // Query the database to fetch all users
+      List<Map<String, dynamic>> queryResult = await db.rawQuery('''
+        SELECT 
+          userID, 
+          email, 
+          password, 
+          name, 
+          phone, 
+          isAdmin 
+        FROM users
+      ''');
+
+      // Map the query result to the dummyUsers format
+      users = queryResult;
+      print("👥 Fetched users: $users");
+    } catch (e) {
+      print('❌ Error fetching users: $e');
+    }
+  }
+
+  Future<void> fetchBookings() async {
+    try {
+      // Query the database to fetch all bookings
+      List<Map<String, dynamic>> queryResult = await db.rawQuery('''
+        SELECT 
+          bookingID, 
+          userID, 
+          flightID, 
+          bookingDate, 
+          status 
+        FROM bookings
+      ''');
+
+      // Map the query result to the dummyBookings format
+      bookings = queryResult;
+      print("📋 Fetched bookings: $bookings");
+    } catch (e) {
+      print('❌ Error fetching bookings: $e');
+    }
+  }
 
 class SkyLinerApp extends StatelessWidget {
   @override
@@ -44,8 +113,8 @@ class SkyLinerApp extends StatelessWidget {
         '/flight_results': (context) => FlightResultsPage(),
         '/flight_details': (context) => FlightDetailsPage(),
         '/payment': (context) => PaymentPage(),
-        '/booking_history': (context) => BookingHistoryPage(userID: 'USER001'),
-        '/profile': (context) => ProfilePage(userID: 'USER001'),
+        '/booking_history': (context) => BookingHistoryPage(),
+        '/profile': (context) => ProfilePage(),
       },
     );
   }
@@ -67,8 +136,6 @@ class SkyLinerApp extends StatelessWidget {
 //   {'id': 'Y5Z6', 'origin': 'Houston', 'destination': 'Chicago', 'price': 160.0, 'date': '2025-03-20', 'departure': '10:30', 'arrival': '13:00', 'airline': 'Southwest Airlines'},
 //   {'id': 'A7B8', 'origin': 'Los Angeles', 'destination': 'New York', 'price': 240.0, 'date': '2025-03-21', 'departure': '20:00', 'arrival': '23:30', 'airline': 'JetBlue'},
 // ];
-
-List<Map> flights = [];
 
 void showPopup(BuildContext context, String title, String content) {
   showDialog(
@@ -107,57 +174,59 @@ class SkyLinerTopNavBar extends StatelessWidget implements PreferredSizeWidget {
   Size get preferredSize => Size.fromHeight(kToolbarHeight);
 }
 
-final List<Map<String, dynamic>> dummyUsers = [
-  {
-    'userID': 'USER001',
-    'email': 'user1@example.com',
-    'password': 'password123',
-    'name': 'John Doe',
-    'phone': '123-456-7890',
-    'isAdmin': false,
-  },
-  {
-    'userID': 'USER002',
-    'email': 'user2@example.com',
-    'password': 'securepass',
-    'name': 'Jane Smith',
-    'phone': '987-654-3210',
-    'isAdmin': false,
-  },
-  {
-    'userID': 'ADMIN001',
-    'email': 'admin@example.com',
-    'password': 'admin123',
-    'name': 'Admin User',
-    'phone': '111-222-3333',
-    'isAdmin': true,
-  },
-];
+// final List<Map<String, dynamic>> dummyUsers = [
+//   {
+//     'userID': 'USER001',
+//     'email': 'user1@example.com',
+//     'password': 'password123',
+//     'name': 'John Doe',
+//     'phone': '123-456-7890',
+//     'isAdmin': false,
+//   },
+//   {
+//     'userID': 'USER002',
+//     'email': 'user2@example.com',
+//     'password': 'securepass',
+//     'name': 'Jane Smith',
+//     'phone': '987-654-3210',
+//     'isAdmin': false,
+//   },
+//   {
+//     'userID': 'ADMIN001',
+//     'email': 'admin@example.com',
+//     'password': 'admin123',
+//     'name': 'Admin User',
+//     'phone': '111-222-3333',
+//     'isAdmin': true,
+//   },
+// ];
 
-final List<Map<String, dynamic>> dummyBookings = [
-  {
-    'bookingID': 'B001',
-    'userID': 'USER001',
-    'flightID': 'FL001',
-    'airline': 'Airline A',
-    'price': 350.00,
-    'bookingDate': '2025-03-19',
-    'status': 'Confirmed',
-  },
-  {
-    'bookingID': 'B002',
-    'userID': 'USER002',
-    'flightID': 'FL002',
-    'airline': 'Airline B',
-    'price': 450.00,
-    'bookingDate': '2025-03-18',
-    'status': 'Confirmed',
-  },
-];
+// final List<Map<String, dynamic>> dummyBookings = [
+//   {
+//     'bookingID': 'B001',
+//     'userID': 'USER001',
+//     'flightID': 'A1B2',
+//     'bookingDate': '2025-03-19',
+//     'status': 'Confirmed',
+//   },
+//   {
+//     'bookingID': 'B002',
+//     'userID': 'USER002',
+//     'flightID': 'C3D4',
+//     'bookingDate': '2025-03-18',
+//     'status': 'Confirmed',
+//   },
+// ];
 
 
-class LoginPage extends StatelessWidget {
+class LoginPage extends StatefulWidget {
+  @override
+  State<LoginPage> createState() => _LoginPageState();
+}
+
+class _LoginPageState extends State<LoginPage> {
   final TextEditingController emailController = TextEditingController();
+
   final TextEditingController passwordController = TextEditingController();
 
   void authenticateUser(BuildContext context) {
@@ -165,12 +234,13 @@ class LoginPage extends StatelessWidget {
     final String password = passwordController.text;
 
     // Check if user exists in the dummy user list
-    final user = dummyUsers.firstWhere(
+    final user = users.firstWhere(
       (user) => user['email'] == email && user['password'] == password,
       orElse: () => {},
     );
 
     if (user.isNotEmpty) {
+      currentUserID = user['userID'];
       // Check if the user is an admin
       if (user['isAdmin'] == true) {
         // Redirect to Admin Dashboard
@@ -261,13 +331,21 @@ class LoginPage extends StatelessWidget {
   }
 }
 
-class SignUpPage extends StatelessWidget {
+class SignUpPage extends StatefulWidget {
+  @override
+  State<SignUpPage> createState() => _SignUpPageState();
+}
+
+class _SignUpPageState extends State<SignUpPage> {
   final TextEditingController nameController = TextEditingController();
+
   final TextEditingController emailController = TextEditingController();
+
   final TextEditingController passwordController = TextEditingController();
+
   final TextEditingController phoneController = TextEditingController();
 
-  void addUser(BuildContext context) {
+  void addUser(BuildContext context) async {
     final String name = nameController.text.trim();
     final String email = emailController.text.trim();
     final String password = passwordController.text.trim();
@@ -280,19 +358,23 @@ class SignUpPage extends StatelessWidget {
     }
 
     // Check if the user already exists
-   final existingUser = dummyUsers.firstWhere(
-  (user) => user['email'] == email,
-  orElse: () => {}, // Return an empty map with matching type
-);
+    final existingUser = users.firstWhere(
+      (user) => user['email'] == email,
+      orElse: () => {}, // Return an empty map with matching type
+    );
 
-// Ensure the map type matches
-if (existingUser.isNotEmpty) {
-  showPopup(context, 'Error', 'User with this email already exists.');
-  return;
-}
+    if (existingUser.isNotEmpty) {
+      showPopup(context, 'Error', 'User with this email already exists.');
+      return;
+    }
 
-    // Add the new user to dummyUsers
-    dummyUsers.add({
+    // Generate a unique userID
+    final String userID = DateTime.now().millisecondsSinceEpoch.toString();
+
+    // Add the new user to the list
+    users = List.from(users)
+    ..add({
+      'userID': userID,
       'name': name,
       'email': email,
       'password': password,
@@ -300,11 +382,30 @@ if (existingUser.isNotEmpty) {
       'isAdmin': false, // Default to false
     });
 
-    // Show success message
-    showPopup(context, 'Success', 'Account created successfully!');
-    
-    // Redirect to login page
-    Navigator.pushReplacementNamed(context, '/');
+    try {
+      // Insert the new user into the database
+      await db.insert(
+        'users',
+        {
+          'userID': userID,
+          'name': name,
+          'email': email,
+          'password': password,
+          'phone': phone,
+          'isAdmin': 0, // Default to false (0 for SQLite)
+        },
+      );
+
+      // Show success message
+      if (context.mounted) showPopup(context, 'Success', 'Account created successfully!');
+
+      // Redirect to login page
+      if (context.mounted) Navigator.pushReplacementNamed(context, '/');
+    } catch (e) {
+      // Handle database errors
+      if (context.mounted) showPopup(context, 'Error', 'Failed to create account. Please try again.');
+      print('❌ Error adding user to database: $e');
+    }
   }
 
   @override
@@ -645,94 +746,107 @@ class _FlightSearchPageState extends State<FlightSearchPage> {
 
 // Other pages and widgets remain the same but should use the SkyLinerTopNavBar for consistency
 
-class FlightResultsPage extends StatefulWidget {
 
+class FlightResultsPage extends StatefulWidget {
   @override
   State<FlightResultsPage> createState() => _FlightResultsPageState();
 }
 
 class _FlightResultsPageState extends State<FlightResultsPage> {
-  void initList() async {
-    // Query the database to fetch all flight details
-    List<Map<String, dynamic>> queryResult = await db.rawQuery('''
-      SELECT 
-        flights.flight_id AS id,
-        flights.flight_number AS flightNumber,
-        airlines.name AS airline,
-        departure_airport.city AS origin,
-        arrival_airport.city AS destination,
-        flights.departure_time AS departure,
-        flights.arrival_time AS arrival,
-        flights.status AS status,
-        DATE(flights.departure_time) AS date
-      FROM flights
-      INNER JOIN airlines ON flights.airline_id = airlines.airline_id
-      INNER JOIN airports AS departure_airport ON flights.departure_airport_id = departure_airport.airport_id
-      INNER JOIN airports AS arrival_airport ON flights.arrival_airport_id = arrival_airport.airport_id
-    ''');
+  List<Map<String, dynamic>> flights = [];
 
-    // Populate the flights list with the query result
-    setState(() {
-      flights = queryResult.map((flight) {
-        return {
-          'id': flight['id'],
-          'flightNumber': flight['flightNumber'],
-          'airline': flight['airline'],
-          'origin': flight['origin'],
-          'destination': flight['destination'],
-          'departure': flight['departure'],
-          'arrival': flight['arrival'],
-          'status': flight['status'],
-          'date': flight['date'],
-        };
-      }).toList();
-    });
+  Future<void> fetchFlights() async {
+    try {
+      // Debugging: Check available tables before querying
+      List<Map<String, dynamic>> tables = await db.rawQuery(
+          "SELECT name FROM sqlite_master WHERE type='table';");
+      print("📋 Available tables: $tables");
+
+      List<Map<String, dynamic>> queryResult = await db.rawQuery('''
+        SELECT 
+          flights.flight_id AS id,
+          flights.flight_number AS flightNumber,
+          airlines.name AS airline,
+          departure_airport.city AS origin,
+          arrival_airport.city AS destination,
+          flights.departure_time AS departure,
+          flights.arrival_time AS arrival,
+          flights.status AS status,
+          DATE(flights.departure_time) AS date
+        FROM flights
+        INNER JOIN airlines ON flights.airline_id = airlines.airline_id
+        INNER JOIN airports AS departure_airport ON flights.departure_airport_id = departure_airport.airport_id
+        INNER JOIN airports AS arrival_airport ON flights.arrival_airport_id = arrival_airport.airport_id
+      ''');
+
+      setState(() {
+        flights = queryResult;
+      });
+    } catch (e) {
+      print('❌ Error fetching flight data: $e');
+    }
   }
 
   @override
   void initState() {
     super.initState();
-    if (flights.isEmpty) {
-      initList();
-    }
+    initDatabase().then((_) {
+      fetchFlights();
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    final Map<String, dynamic>? args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>?;
-    final String departureCity = (args?['departureCity'] ?? '').trim().toLowerCase();
-    final String arrivalCity = (args?['arrivalCity'] ?? '').trim().toLowerCase();
+    final Map<String, dynamic>? args =
+        ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+    final String departureCity =
+        (args?['departureCity'] ?? '').trim().toLowerCase();
+    final String arrivalCity =
+        (args?['arrivalCity'] ?? '').trim().toLowerCase();
     final String date = (args?['date'] ?? '').trim();
 
-    final filteredFlights = flights.where((flight) =>
-      flight['origin'].toString().trim().toLowerCase() == departureCity &&
-      flight['destination'].toString().trim().toLowerCase() == arrivalCity &&
-      flight['date'].toString().trim() == date
-    ).toList();
+    final filteredFlights = flights
+        .where((flight) =>
+            flight['origin'].toString().trim().toLowerCase() == departureCity &&
+            flight['destination']
+                .toString()
+                .trim()
+                .toLowerCase() ==
+                arrivalCity &&
+            flight['date'].toString().trim() == date)
+        .toList();
 
-     return Scaffold(
+    return Scaffold(
       appBar: AppBar(title: Text('Flight Results')),
-      body: filteredFlights.isEmpty
-          ? Center(child: Text('No flights available for selected criteria'))
-          : ListView.builder(
-              itemCount: filteredFlights.length,
-              itemBuilder: (context, index) {
-                final flight = filteredFlights[index];
-                return Card(
-                  margin: EdgeInsets.all(10),
-                  child: ListTile(
-                    title: Text('Airline: ${flight['airline']}'),
-                    subtitle: Text('${flight['origin']} → ${flight['destination']}\nDate: ${flight['date']}\nPrice: \$${flight['price']}'),
-                    onTap: () {
-                      Navigator.pushNamed(context, '/flight_details', arguments: flight);
-                    },
-                  ),
-                );
-              },
-            ),
+      body: flights.isEmpty
+          ? Center(child: SpinKitCircle(color: Colors.blue))
+          : filteredFlights.isEmpty
+              ? Center(
+                  child: Text('No flights available for selected criteria'))
+              : ListView.builder(
+                  itemCount: filteredFlights.length,
+                  itemBuilder: (context, index) {
+                    final flight = filteredFlights[index];
+                    return Card(
+                      margin: EdgeInsets.all(10),
+                      child: ListTile(
+                        title: Text('Airline: ${flight['airline']}'),
+                        subtitle: Text('${flight['origin']} → ${flight['destination']}\n'
+                            'Date: ${flight['date']}\n'
+                            'Price: \$${flight['price']}'),
+                        onTap: () {
+                          Navigator.pushNamed(context, '/flight_details',
+                              arguments: flight);
+                        },
+                      ),
+                    );
+                  },
+                ),
     );
   }
 }
+
+
 
 class FlightDetailsPage extends StatelessWidget {
   @override
@@ -820,6 +934,7 @@ class FlightDetailsPage extends StatelessWidget {
   }
 }
 
+
 class PaymentPage extends StatefulWidget {
   @override
   _PaymentPageState createState() => _PaymentPageState();
@@ -829,28 +944,95 @@ class _PaymentPageState extends State<PaymentPage> {
   String? selectedPaymentMethod;
   String paymentStatus = "Pending";
 
-  void _confirmPayment(Map<String, dynamic> paymentDetails) {
+  void _confirmPayment(BuildContext context, Map<String, dynamic> paymentDetails) async {
+    try {
+      await db.delete(
+        'bookings',
+        where: 'flightID = ? AND userID = ?',
+        whereArgs: [paymentDetails['id'], paymentDetails['userID']],
+      );
+      print("✅ Existing booking removed from database (if any).");
+    } catch (e) {
+      print("❌ Error removing existing booking from database: $e");
+    }
+
+    // Update the payment status
     setState(() {
       paymentStatus = "Confirmed";
     });
 
-    // Add booking to dummyBookings
-    dummyBookings.add({
+    // Create a new booking
+    Map<String, dynamic> newBooking = {
       'bookingID': DateTime.now().millisecondsSinceEpoch.toString(),
-      'userID': paymentDetails['userID'],
+      'userID': currentUserID,
       'flightID': paymentDetails['id'],
-      'airline': paymentDetails['airline'],
-      'price': paymentDetails['price'],
       'bookingDate': paymentDetails['bookingDate'],
       'status': 'Confirmed',
-    });
+    };
 
-    Navigator.pop(context);
+    try {
+      // Insert the new booking into the database
+      await db.insert('bookings', newBooking);
+      print("✅ New booking added to database: $newBooking");
+
+      // Add the new booking to the in-memory list
+      setState(() {
+        bookings = List.from(bookings)..add(newBooking); // Create a new list and add the booking
+      });
+    } catch (e) {
+      print("❌ Error adding new booking to database: $e");
+    }
+
+    print("✅ Booking confirmed and added: $newBooking");
+    print("📋 Updated bookings list: $bookings");
+
+    // Close PaymentPage and return to the previous screen
+    if (context.mounted) Navigator.pop(context);
+  }
+
+
+
+  void _showConfirmationDialog(BuildContext parentContext, Map<String, dynamic> paymentDetails) {
+    showDialog(
+      context: parentContext,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: Text("Confirm Payment"),
+          content: Text("Do you want to confirm the payment now or pay later?"),
+          actions: [
+            TextButton(
+              onPressed: () {
+                setState(() {
+                  paymentStatus = "Pending";
+                });
+                Navigator.pop(dialogContext);
+              },
+              child: Text("Pay Later"),
+            ),
+            ElevatedButton(
+  onPressed: () {
+    _confirmPayment(parentContext, paymentDetails); // Pass the correct BuildContext
+    Navigator.pop(dialogContext); // Close the dialog
+  },
+  child: Text("Confirm"),
+),
+
+          ],
+        );
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final paymentDetails = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>;
+    final paymentDetails = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+
+    if (paymentDetails == null) {
+      return Scaffold(
+        appBar: AppBar(title: Text('Payment')),
+        body: Center(child: Text("No payment details available.")),
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(title: Text('Payment')),
@@ -865,7 +1047,7 @@ class _PaymentPageState extends State<PaymentPage> {
             ),
             SizedBox(height: 16),
             Text(
-              'Airline: ${paymentDetails['airline']}',
+              'Flight ID: ${paymentDetails['id']}',
               style: TextStyle(fontSize: 16),
             ),
             SizedBox(height: 8),
@@ -903,11 +1085,21 @@ class _PaymentPageState extends State<PaymentPage> {
             SizedBox(height: 16),
             Text(
               'Payment Status: $paymentStatus',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: paymentStatus == "Confirmed" ? Colors.green : Colors.red),
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: paymentStatus == "Confirmed" ? Colors.green : Colors.red,
+              ),
             ),
             SizedBox(height: 16),
             ElevatedButton(
-              onPressed: () => _confirmPayment(paymentDetails),
+              onPressed: () {
+                if (selectedPaymentMethod == null) {
+                  print("❌ Please select a payment method before confirming.");
+                  return;
+                }
+                _showConfirmationDialog(context, paymentDetails); // ✅ Pass context properly
+              },
               child: Text('Confirm Payment'),
             ),
           ],
@@ -917,27 +1109,56 @@ class _PaymentPageState extends State<PaymentPage> {
   }
 }
 
-class BookingHistoryPage extends StatefulWidget {
-  final String userID;
 
-  BookingHistoryPage({required this.userID});
+class BookingHistoryPage extends StatefulWidget {
 
   @override
   _BookingHistoryPageState createState() => _BookingHistoryPageState();
 }
 
 class _BookingHistoryPageState extends State<BookingHistoryPage> {
+  List<Map<String, dynamic>> userBookings = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _updateBookings();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _updateBookings(); // Refresh bookings every time the page is revisited
+  }
+
+  void _updateBookings() {
+    setState(() {
+      userBookings = bookings.where((booking) => booking['userID'] == currentUserID).toList();
+    });
+  }
+
+  void cancelBooking(String bookingID) async {
+    try {
+      // Remove the booking from the database
+      await db.delete(
+        'bookings',
+        where: 'bookingID = ?',
+        whereArgs: [bookingID],
+      );
+      print("✅ Booking removed from database: $bookingID");
+
+      // Remove the booking from the in-memory list
+      setState(() {
+        bookings.removeWhere((booking) => booking['bookingID'] == bookingID);
+        _updateBookings(); // Refresh the userBookings list
+      });
+    } catch (e) {
+      print("❌ Error canceling booking: $e");
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Filter bookings by userID
-    final userBookings = dummyBookings.where((booking) => booking['userID'] == widget.userID).toList();
-
-    void cancelBooking(String bookingID) {
-      setState(() {
-        dummyBookings.removeWhere((booking) => booking['bookingID'] == bookingID);
-      });
-    }
-
     return Scaffold(
       appBar: AppBar(title: Text('Booking History')),
       body: userBookings.isEmpty
@@ -948,14 +1169,13 @@ class _BookingHistoryPageState extends State<BookingHistoryPage> {
                 final booking = userBookings[index];
                 return Card(
                   child: ListTile(
-                    title: Text('Airline: ${booking['airline']}'),
+                    title: Text('Flight ID: ${booking['flightID']}'),
                     subtitle: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text('Booking ID: ${booking['bookingID']}'),
                         Text('Status: ${booking['status']}'),
                         Text('Booking Date: ${booking['bookingDate']}'),
-                        Text('Flight ID: ${booking['flightID']}'),
                       ],
                     ),
                     trailing: IconButton(
@@ -974,9 +1194,6 @@ class _BookingHistoryPageState extends State<BookingHistoryPage> {
 
 
 class ProfilePage extends StatefulWidget {
-  final String userID;
-
-  ProfilePage({required this.userID});
 
   @override
   _ProfilePageState createState() => _ProfilePageState();
@@ -989,12 +1206,14 @@ class _ProfilePageState extends State<ProfilePage> {
   void initState() {
     super.initState();
     // Load the user's data initially
-    currentUser = dummyUsers.firstWhere((user) => user['userID'] == widget.userID);
+    print("🔍 Current User ID: $currentUserID");
+    print(users);
+    currentUser = users.firstWhere((user) => user['userID'] == currentUserID);
   }
 
   void refreshUserData() {
     setState(() {
-      currentUser = dummyUsers.firstWhere((user) => user['userID'] == widget.userID);
+      currentUser = users.firstWhere((user) => user['userID'] == currentUserID);
     });
   }
 
@@ -1023,7 +1242,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 final result = await Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => ProfileEditPage(userID: widget.userID),
+                    builder: (context) => ProfileEditPage(),
                   ),
                 );
 
@@ -1044,9 +1263,6 @@ class _ProfilePageState extends State<ProfilePage> {
 
 
 class ProfileEditPage extends StatefulWidget {
-  final String userID;
-
-  ProfileEditPage({required this.userID});
 
   @override
   _ProfileEditPageState createState() => _ProfileEditPageState();
@@ -1062,7 +1278,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
   void initState() {
     super.initState();
     // Initialize currentUser from dummyUsers
-    currentUser = dummyUsers.firstWhere((user) => user['userID'] == widget.userID);
+    currentUser = users.firstWhere((user) => user['userID'] == currentUserID);
     nameController = TextEditingController(text: currentUser['name']);
     emailController = TextEditingController(text: currentUser['email']);
     phoneController = TextEditingController(text: currentUser['phone']);
@@ -1076,18 +1292,39 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
     super.dispose();
   }
 
-  void saveChanges(BuildContext context, Map<String, dynamic> updatedData) {
-  // Find the user in the dummyUsers list based on userID
-  final index = dummyUsers.indexWhere((user) => user['userID'] == updatedData['userID']);
+  void saveChanges(BuildContext context, Map<String, dynamic> updatedData) async {
+    // Find the user in the users list based on userID
+    final index = users.indexWhere((user) => user['userID'] == updatedData['userID']);
 
-  if (index != -1) {
-    // Update the user's data
-    dummyUsers[index] = updatedData;
+    if (index != -1) {
+      // Update the user's data in the users list
+      setState(() {
+        users = List.from(users)..[index] = updatedData; // Create a new list and update it
+      });
+
+      try {
+        // Update the user's data in the database
+        await db.update(
+          'users',
+          {
+            'name': updatedData['name'],
+            'email': updatedData['email'],
+            'phone': updatedData['phone'],
+            'isAdmin': updatedData['isAdmin'],
+          },
+          where: 'userID = ?',
+          whereArgs: [updatedData['userID']],
+        );
+
+        print("✅ User data updated successfully in the database.");
+      } catch (e) {
+        print("❌ Error updating user data in the database: $e");
+      }
+    }
+
+    // Navigate back to the ProfilePage with updated data
+    if (context.mounted) Navigator.pop(context, updatedData);
   }
-
-  // Navigate back to the ProfilePage with updated data
-  Navigator.pop(context, updatedData);
-}
 
   @override
   Widget build(BuildContext context) {
