@@ -241,8 +241,9 @@ class _LoginPageState extends State<LoginPage> {
 
     if (user.isNotEmpty) {
       currentUserID = user['userID'];
+      print("IS ADMIN? ${user['isAdmin']}");
       // Check if the user is an admin
-      if (user['isAdmin'] == true) {
+      if (user['isAdmin'] == 1) {
         // Redirect to Admin Dashboard
         Navigator.pushNamed(context, '/admin_dashboard');
       } else {
